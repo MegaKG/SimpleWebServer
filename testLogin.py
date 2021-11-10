@@ -101,3 +101,5 @@ def body(Options,CON,PassIn):
 
 
     
+def websocket(Options,CON,PassIN):
+    CON.close()

@@ -10,3 +10,6 @@ def headerExtra(Options,PassIN):
 
 def body(Options,CON,PassIN):
     return b'<!DOCTYPE html><html>Hello World</html>'
+
+def websocket(Options,CON,PassIN):
+    CON.close()

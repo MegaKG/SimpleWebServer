@@ -220,6 +220,7 @@ class webServer:
 
             except Exception as E:
                 self.print("ERR",E)
+                raise
                 CON.sendstdat(E500)
 
         except TLSwrapper.ssl.SSLError:
