@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+#GNU General Public License v3.0
+#Code by MegaKG
+
 import socket
 import ssl
 import TCPstreams3 as tcp

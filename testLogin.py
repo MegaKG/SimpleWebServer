@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
+#GNU General Public License v3.0
+#Code by MegaKG
+
 import time
-#import UNIXstreams3
+
 
 
 #Yes, this is insecure... you do realise that this is a test right?

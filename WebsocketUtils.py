@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+#GNU General Public License v3.0
+#Code by MegaKG
 import hashlib
 import base64
 
