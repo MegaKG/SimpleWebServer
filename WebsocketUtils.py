@@ -17,12 +17,16 @@ def genaccept(REQUEST):
 
 #The Response header for Websocket
 RESP = """HTTP/1.1 101 Switching Protocols
-Server: KPython V3
 Upgrade: WebSocket
+Connection: Upgrade
 Sec-WebSocket-Accept: [ACCEPT]
-Sec-WebSocket-Protocol: chat
+
 """
 
-
+#Takes the decoded request options and generates a response header
 def responseHeader(REQUEST):
     return RESP.replace('[ACCEPT]',genaccept(REQUEST))
+
+#To be Implemented
+def parsePacket(Data):
+    pass

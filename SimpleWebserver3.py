@@ -86,6 +86,7 @@ class webServer:
         #Dynamically import all of the Page Python files
         self.modules = {}
         for location in self.config['Pages']:
+            self.print("Import",location,self.config['Pages'][location])
             self.modules[location] = importlib.import_module(self.config['Pages'][location].split('.py')[0])
 
         #Create a fast lookup array for all available locations
