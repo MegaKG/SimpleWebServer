@@ -10,3 +10,7 @@ Usage:
 - The main file is 'SimpleWebServer3.py'
 - This can be executed directly with one command line argument pointing to the config file
 - Alternatively, the file can be imported and the class initialised with a dictionary of configuration values.
+
+
+ToDo:
+- Websocket Handshake works, packet parsing needs to be completed
