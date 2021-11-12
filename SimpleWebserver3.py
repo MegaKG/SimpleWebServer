@@ -175,7 +175,10 @@ class webServer:
                                 CON = WebsocketUtils.wrappedConnection(CON)
 
                                 #Now we begin websocket
-                                self.modules[Resource].websocket(ParsedOptions,CON,self.PassIn)
+                                try:
+                                    self.modules[Resource].websocket(ParsedOptions,CON,self.PassIn)
+                                except OSError:
+                                    self.print(ID,"Websocket Died")
 
                     #Handle HTTP
                     else:
@@ -224,7 +227,7 @@ class webServer:
 
             except Exception as E:
                 self.print("ERR",E)
-                raise #For Debug
+                #raise #For Debug
                 CON.sendstdat(E500)
 
         except TLSwrapper.ssl.SSLError:
