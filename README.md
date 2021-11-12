@@ -12,5 +12,6 @@ Usage:
 - Alternatively, the file can be imported and the class initialised with a dictionary of configuration values.
 
 
-ToDo:
-- Websocket Handshake works, packet parsing needs to be completed
+To Do:
+- Internal Documentation
+- Security Hardening
