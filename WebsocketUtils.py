@@ -5,7 +5,11 @@ import hashlib
 import base64
 import TCPstreams3 as tcp
 import struct
+import socket
+import time
 
+
+#First Thing to say, WHAT AN EVIL PROTOCOL
 
 #The Websocket Specification requires this UUID as a value
 CONSTANT = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
@@ -58,8 +62,8 @@ def responseHeader(REQUEST):
 
 #This wraps Websocket Connections with a similar interface to those of TCPstreams3 and TLSwrapper
 class wrappedConnection(tcp.serverCon):
-    def __init__(self,CON,key):
-        self.conn = CON
+    def __init__(self,CON):
+        self.conn = CON.conn
         self.info = CON.info
 
     #Parses the content of a websocket frame
@@ -90,12 +94,12 @@ class wrappedConnection(tcp.serverCon):
         if FirstLength == 127:
             #64 Bit Length, need 8 Bytes
             #Format 'Q' is unsigned long integer (8 bytes)
-            ActualLength = struct.unpack('Q',RawData[2:10])[0]
+            ActualLength = struct.unpack('!Q',RawData[2:10])[0]
             ContentStart = 10
 
         elif FirstLength == 126:
             #16 Bit Length, Need 2 Bytes
-            ActualLength = struct.unpack('H',RawData[2:4])[0]
+            ActualLength = struct.unpack('!H',RawData[2:4])[0]
             ContentStart = 4
         else:
             #7 Bit Length, do nothing as out of 127 anyway
@@ -103,7 +107,8 @@ class wrappedConnection(tcp.serverCon):
             ContentStart = 2
 
         #Get the masking key
-        MaskingKey = RawData[10:14]
+        MaskingKey = RawData[ContentStart:ContentStart+4]
+        #print("Masking Key",MaskingKey)
 
         #Return
         if not Mask:
@@ -114,20 +119,97 @@ class wrappedConnection(tcp.serverCon):
                 'OP':OP
             }
         else:
+            #We now have to decode from where the actual content begins
+            ContentStart += 4
+            OutContent = bytearray()
+
+            #We iterate over the content, using the XOR function with the relevant byte of the key
+            KeyCounter = 0
+            for char in RawData[ContentStart:]:
+                OutContent.append( char ^ MaskingKey[KeyCounter] )
+                KeyCounter += 1
+                if KeyCounter == 4:
+                    KeyCounter = 0
+
             return {
                 'IsEnd':Fin,
-                'Content':RawData[ContentStart:],
+                'Content':bytes(OutContent),
                 'Length':ActualLength,
                 'OP':OP
             }
 
-    
+    #Creates a websocket frame
+    def _genpacket(self,DATA,opcode=1):
+        #Get the Length of our data
+        Length = len(DATA)
 
-    #Buffer is made irrelevant
-    def getdat(self,BUFFER=None):
-        pass
+        #The output frame
+        OutputFrame = bytearray()
+
+        #attach the Finish Bit and the opcode
+        OutputFrame.append( 128 | opcode )
+
+        #Then attach the length 
+
+        #If Smaller than 126
+        if Length < 126:
+            OutputFrame.append( Length )
+
+        #If it is within 16 bit 
+        elif Length < 65536:
+            #Give the 126
+            OutputFrame.append( 126 )
+            #Now two bytes
+            OutputFrame += struct.pack('!Q',Length)
+        
+        #If it is 64 bit
+        elif Length < 2**64:
+            #Give the 127
+            OutputFrame.append( 127 )
+            #Now eight bytes
+            OutputFrame += struct.pack('!H',Length)
+
+        else:
+            raise ValueError("Invalid Length for Websocket Frame")
+
+        return bytes(OutputFrame) + DATA
 
     def senddat(self,Data):
-        pass
+        try:
+            #1 is an opcode for normal ascii text
+            Processed = self._genpacket(Data,1)
+            self.info['TotalSent'] += len(Processed)
+            self.conn.send(Processed)
+            return True
+        except socket.error:
+            self.close()
+            return False
+
+    def sendstdat(self,strdat):
+      return self.senddat(strdat.encode('utf-8'))
+
+    def getdat(self,buf=8192):
+      GOT = b''
+      while True:
+        D = self.conn.recv(buf)
+        if D == b'':
+            self.close()
+            return False
+        
+        Result = self._parsePacket(D)
+        GOT += Result['Content']
+        if Result['IsEnd']:
+            break
+
+      self.info['TotalRecv'] += len(GOT)
+      self.info['LastPacket'] = time.time()
+      return GOT
+
+    def getstdat(self,buf=1024):
+      GOT = self.getdat(buf)
+      if GOT != False:
+        return GOT.decode('utf-8')
+      else:
+        return GOT
 
     

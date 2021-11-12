@@ -171,6 +171,9 @@ class webServer:
                                 HEADER = WebsocketUtils.responseHeader(ParsedOptions)
                                 CON.sendstdat(HEADER)
 
+                                #Convert CON to something usable
+                                CON = WebsocketUtils.wrappedConnection(CON)
+
                                 #Now we begin websocket
                                 self.modules[Resource].websocket(ParsedOptions,CON,self.PassIn)
 
@@ -221,7 +224,7 @@ class webServer:
 
             except Exception as E:
                 self.print("ERR",E)
-                #raise #For Debug
+                raise #For Debug
                 CON.sendstdat(E500)
 
         except TLSwrapper.ssl.SSLError:
