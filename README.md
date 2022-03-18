@@ -12,6 +12,11 @@ Usage:
 - Alternatively, the file can be imported and the class initialised with a dictionary of configuration values.
 
 
-To Do:
-- Internal Documentation
+To Do: (Coming Soon)
+- Bug fix - Close Connections
+- Reuse of Existing Connections (Keepalive)
+- Class based page files and responses
+- Allow returning of HTTP Status Codes from page files
+- Attach resource http request to page file input
+- Basic (htaccess like) 401 Challenge Authentication
 - Security Hardening
