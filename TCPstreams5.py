@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-#GNU General Public License v3.0
-#Code by MegaKG
-
 import socket
 import time
 
@@ -67,10 +64,16 @@ class clientCon:
   def report(self):
     return self.info
 
+  def __del__(self):
+    self.close()
+    del self.info
+
 
 
 def newServer(Host,Port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     s.bind((Host, Port))
     s.listen(1)
     return s
@@ -136,5 +139,9 @@ class serverCon:
 
     def report(self):
       return self.info
+
+    def __del__(self):
+      self.close()
+      del self.info
     
   

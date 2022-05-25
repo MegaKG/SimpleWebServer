@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
-#GNU General Public License v3.0
-#Code by MegaKG
-
 import socket
 import ssl
-import TCPstreams3 as tcp
+import TCPstreams5 as tcp
 
-#To Generate Certificates:
-#sudo openssl req -x509 -nodes -days 1095 -newkey rsa:2048 -out server.crt -keyout server.key
+#sudo openssl req -x509 -nodes -days 1095 -newkey rsa:2048 -out /etc/apache2/ssl/server.crt -keyout /etc/apache2/ssl/server.key
 
 
 class wrappedServer(tcp.serverCon):

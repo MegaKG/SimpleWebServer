@@ -3,11 +3,12 @@
 #Code by MegaKG
 
 #Import some of the custom support libraries
-import TCPstreams3 #This handles TCP sockets nicely
-import TLSwrapper #This converts TCP sockets from the above library to SSL, providing the same interface
+import TCPstreams5 #This handles TCP sockets nicely
+import TLSwrapper2 #This converts TCP sockets from the above library to SSL, providing the same interface
 import ConfigUtils #Loads configuration from files
 import Logger #Logs to files with date and time
 import WebsocketUtils #Handler for Websocket magic 
+import DefaultErrors #Web Pages for Default Errors
 
 #Import standard library things
 import sys #Used to get commandline arguments
@@ -16,41 +17,6 @@ import time #Used to get Current Epoch time in seconds
 import importlib #Used to dynamically load python files 
 import json #Processes JSON text
 
-
-#This is a normal response header by the server for HTTP requests
-#200 = the HTTP code for success
-#Content-Type is the mimetype, text/html is the most common
-#In this case, the [EXTRA] area is replaced with extra tags from the python page
-NORMAL_HEADER = """HTTP/1.1 200 OK
-Server: KPython V3
-Vary: Accept-Encoding
-Content-Length: [LENGTH]
-Content-Type: [TYPE]
-[EXTRA]
-
-"""
-
-#This is an error response (Header and Body) for if the requested resource isn't found
-#404 = HTTP code for not found
-E404 = """HTTP/1.1 404 Not Found
-Server: KPython V3
-Vary: Accept-Encoding
-Content-Type: text/html
-
-
-<html><p>404 Not Found</p></html>
-"""
-
-#This is an error response (Header and Body) for if something breaks in the webpage during runtime
-#505 = HTTP code for internal server error
-E500 = """HTTP/1.1 500 Internal Server Error
-Server: KPython V3
-Vary: Accept-Encoding
-Content-Type: text/html
-
-
-<html><p>500 Internal Server Error</p></html>
-"""
 
 #The main class, initialised as follows:
 #Server = webServer(Dict)
@@ -77,7 +43,7 @@ class webServer:
         self.config = Config
 
         #Open the TCP server socket on specified Address and Port
-        self.server = TCPstreams3.newServer(Config['HostAddress'],int(Config['HostPort']))
+        self.server = TCPstreams5.newServer(Config['HostAddress'],int(Config['HostPort']))
 
         #These keep track of connnected clients (and their threads)
         self.connections = []
@@ -145,93 +111,90 @@ class webServer:
         try:
             #Upgrade to TLS if required
             if self.config['TlsEnable'].lower() == 'true':
-                CON = TLSwrapper.wrappedServer(CON,self.config['TlsKey'],self.config['TlsCert'])
+                CON = TLSwrapper2.wrappedServer(CON,self.config['TlsKey'],self.config['TlsCert'])
 
-            #Read our Request
-            Request = CON.getdat(1024)
-            self.print(ID,"Got Request")
+            #Repeat while the connection is kept alive
+            while True:
+                #Read our Request
+                if CON.report()['Alive'] == False:
 
-            try:
-                #Parse the raw request and get both the resource and the variable values
-                ParsedOptions,Resource = self.parseRequest(Request)
+                    break
+                    #pass
+                try:
+                 Request = CON.getdat(1024)
+                except Exception as E:
+                    break
+                if Request == b'':
+                    break
+                    #pass
 
-                #Keep a record of this transaction
-                self.print(ID,"has requested",Resource,"By",CON.report()['Address'])
+                self.print(ID,"Got Request")
 
-                #Determine type of Response
-                #First check if the resource exists
-                if Resource in self.loadedModules:
-                    #Handle Websocket
-                    if 'Upgrade' in ParsedOptions.keys():
-                        #If a websocket is wanted
-                        if ParsedOptions['Upgrade'] == 'websocket':
-                            if self.config['AllowWebsocket'].lower() == 'true':
-                                self.print(ID,"Upgrading to Websocket")
-                                #Do the special magic that prevents Caching
-                                HEADER = WebsocketUtils.responseHeader(ParsedOptions)
-                                CON.sendstdat(HEADER)
+                try:
+                    #Parse the raw request and get both the resource and the variable values
+                    ParsedOptions,Resource = self.parseRequest(Request)
+                    ParsedOptions['Resource'] = Resource
 
-                                #Convert CON to something usable
-                                CON = WebsocketUtils.wrappedConnection(CON)
+                    #Keep a record of this transaction
+                    self.print(ID,"has requested",Resource,"By",CON.report()['Address'])
 
-                                #Now we begin websocket
-                                try:
-                                    self.modules[Resource].websocket(ParsedOptions,CON,self.PassIn)
-                                except OSError:
-                                    self.print(ID,"Websocket Died")
+                    #Determine type of Response
+                    #First check if the resource exists
+                    if Resource in self.loadedModules:
+                        #Create the Page Object
+                        MyPage = self.modules[Resource].page(ParsedOptions,self.PassIn,CON)
 
-                    #Handle HTTP
+                        #Handle Websocket
+                        if 'Upgrade' in ParsedOptions.keys():
+                            #If a websocket is wanted
+                            if ParsedOptions['Upgrade'] == 'websocket':
+                                if self.config['AllowWebsocket'].lower() == 'true':
+                                    self.print(ID,"Upgrading to Websocket")
+                                    #Do the special magic that prevents Caching
+                                    HEADER = WebsocketUtils.responseHeader(ParsedOptions)
+                                    CON.sendstdat(HEADER)
+
+                                    #Convert CON to something usable
+                                    CON = WebsocketUtils.wrappedConnection(CON)
+
+                                    #Now we begin websocket
+                                    try:
+                                        MyPage.websocket(CON)
+                                    except OSError:
+                                        self.print(ID,"Websocket Died")
+
+                        #Handle HTTP
+                        else:
+                            #Respond with the requested resource
+                            MyPage.connect()
+
+                    #Otherwise, handle it
                     else:
-                        #Respond with the requested resource
-                        #First get the content type from the python file
-                        ContentType = self.modules[Resource].typeHeader(ParsedOptions,self.PassIn)
-                        #Then the body content
-                        Body = self.modules[Resource].body(ParsedOptions,CON,self.PassIn)
-                        #Calculate length of the response
-                        ContentLength = str(len(Body))
-                        #Get any extra attributes that need to be in the response header
-                        Extra = self.modules[Resource].headerExtra(ParsedOptions,self.PassIn)
+                        if self.config['CatchAll'].lower() == 'true':
+                            #Server Catchall page
+                            MyPage = self.catch.page(ParsedOptions,self.PassIn,CON)
+                            MyPage.connect()
 
-                        #Finally send it
-                        CON.senddat(
-                            NORMAL_HEADER.replace('[LENGTH]',ContentLength).replace('[TYPE]',ContentType).replace('[EXTRA]',Extra).encode() + Body
-                            )
-                            
+                        else:
+                            #The Default 404 Handler
+                            page = DefaultErrors.e404(ParsedOptions,self.PassIn,CON)
+                            page.connect()
 
-                #Otherwise, handle it
-                else:
-                    if self.config['CatchAll'].lower() == 'true':
-                        #Server Catchall page
-                        #First get the content type from the python file
-                        ContentType = self.catch.typeHeader(ParsedOptions,self.PassIn)
-                        #Then the body content
-                        Body = self.catch.body(ParsedOptions,CON,self.PassIn)
-                        #Calculate length of the response
-                        ContentLength = str(len(Body))
-                        #Get any extra attributes that need to be in the response header
-                        Extra = self.catch.headerExtra(ParsedOptions,self.PassIn)
+                except Exception as E:
+                    #The Default 500 Handler
+                    self.print(ID,"ERROR 500",E)
+                    page = DefaultErrors.e500(None,self.PassIn,CON)
+                    page.connect()
+                    raise E
+                    #break
+                    #pass
 
-                        #Here we modify the websocket to allow it to persist longer than a HTTP Connection
-                        #This requires modifying the connection (class) attributes. It is a hack and is poor practice, but works!
-                        #To enable this, the initialisation time is pushed into the future
-                        CON.info['InitTime'] = time.time() + int(self.config['WebsocketMaxTime'])
+        except TLSwrapper2.ssl.SSLError:
+            self.print(ID,"CertError")
 
-                        #Finally send it
-                        CON.senddat(
-                            NORMAL_HEADER.replace('[LENGTH]',ContentLength).replace('[TYPE]',ContentType).replace('[EXTRA]',Extra).encode() + Body
-                        )
-
-                    else:
-                        #Server 404 response
-                        CON.sendstdat(E404)
-
-            except Exception as E:
-                self.print("ERR",E)
-                #raise #For Debug
-                CON.sendstdat(E500)
-
-        except TLSwrapper.ssl.SSLError:
-            self.print("CertError")
+        #Clean Up
+        CON.close()
+        self.print(ID,"Died")
 
 
     #This is the main loop of the webserver
@@ -255,7 +218,7 @@ class webServer:
                 time.sleep(0.1)
 
             #Accept a Client
-            Connection = TCPstreams3.serverCon(self.server)
+            Connection = TCPstreams5.serverCon(self.server)
             
             #Create a record
             self.connections.append(

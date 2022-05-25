@@ -3,7 +3,7 @@
 #Code by MegaKG
 import hashlib
 import base64
-import TCPstreams3 as tcp
+import TCPstreams5 as tcp
 import struct
 import socket
 import time

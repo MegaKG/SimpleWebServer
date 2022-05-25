@@ -2,22 +2,16 @@
 #GNU General Public License v3.0
 #Code by MegaKG
 import datetime
+import Pages
 
-def typeHeader(Options,PassIN):
-    return 'text/html; charset=UTF-8'
-
-def headerExtra(Options,PassIN):
-    return ''
-
-def body(Options,CON,PassIN):
-    return b"""
+MSG = """
 <html>
 <body>
 
 <div id='timediv'></div>
 
 <script>
-var socket = new WebSocket("ws://127.0.0.1:8080/testSocket/socket");
+var socket = new WebSocket("ws://127.0.0.1:8080/socket");
 function gettime(){
     socket.send('Hello');
 }
@@ -31,13 +25,23 @@ socket.onmessage = function(event){
 
 </body>
 </html>
-    """
+        """
+
+class page(Pages.webpage):
+    def connect(self):
+        self.sendCode(200)
+        self.sendLength(len(MSG))
+        self.sendType("text/html")
+
+        self.print(MSG)
 
 
-def websocket(Options,CON,PassIN):
-    print("Socket Listener Running")
-    while True:
-        #Get the Response
-        IN = CON.getdat()
-        print("Socket IN",IN)
-        CON.sendstdat("The Time Is " + str(datetime.datetime.now()))
+
+
+    def websocket(self,CON):
+        print("Socket Listener Running")
+        while True:
+            #Get the Response
+            IN = CON.getdat()
+            print("Socket IN",IN)
+            CON.sendstdat("The Time Is " + str(datetime.datetime.now()))
