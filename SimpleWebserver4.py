@@ -84,25 +84,29 @@ class webServer:
     #This parses HTTP request headers from the client
     def parseRequest(self,Req):
         #First Get the Request type and resource
-        SP = Req.decode().replace('\r','\n').split('\n')
-        Resource = SP[0]
+        #(Req)
+        SP = Req.strip(b'\r').split(b'\n')
+        Resource = SP[0].decode()
 
         #Process HTTP Attributes in the request
         OUT = {}
-        for i in SP[1:]:
-            if (len(i) > 3) and (':' in i):
-                REQ_SP = i.split(': ')
-                OUT[REQ_SP[0]] = REQ_SP[1]
-            elif '=' in i:
-                OUT = self._dictMerge(OUT,self.procGet(i))
-
+        OUT["GET"] = {}
+        OUT["POST"] = {}
 
         #Process GET values
         Resource = Resource.split(' ')[1]
         if '?' in Resource:
             Resource,GET = Resource.split('?')
-            OUT = self._dictMerge(OUT,self.procGet(GET))
-                    
+            OUT["GET"] = self.procGet(GET)
+
+
+        #Process POST values 
+        for i in SP[1:]:
+            if (len(i) > 3) and (b':' in i):
+                REQ_SP = i.split(b': ')
+                OUT[REQ_SP[0].decode()] = REQ_SP[1].strip(b'\r')
+            elif b'=' in i:
+                OUT["POST"] = self._dictMerge(OUT["POST"],self.procGet(i))
 
         return OUT,Resource
 
@@ -121,12 +125,14 @@ class webServer:
                     break
                     #pass
                 try:
-                 Request = CON.getdat(1024)
+                    Request = CON.getdat(1024)
                 except Exception as E:
                     break
                 if Request == b'':
                     break
                     #pass
+                if Request == False:
+                    break
 
                 self.print(ID,"Got Request")
 
@@ -145,9 +151,10 @@ class webServer:
                         MyPage = self.modules[Resource].page(ParsedOptions,self.PassIn,CON)
 
                         #Handle Websocket
+                        print(ParsedOptions)
                         if 'Upgrade' in ParsedOptions.keys():
                             #If a websocket is wanted
-                            if ParsedOptions['Upgrade'] == 'websocket':
+                            if ParsedOptions['Upgrade'] == b'websocket':
                                 if self.config['AllowWebsocket'].lower() == 'true':
                                     self.print(ID,"Upgrading to Websocket")
                                     #Do the special magic that prevents Caching

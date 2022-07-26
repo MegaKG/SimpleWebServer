@@ -24,6 +24,10 @@ class webpage:
     def sendLength(self,Length):
         self.Connection.sendstdat("Content-Length: " + str(Length) + "\n")
 
+    #Custom Headers
+    def sendHeader(self,Key,Value):
+        self.Connection.sendstdat("{}: {}\n".format(Key,Value))
+
     #Makes life easy for page generation
     def print(self,*IN):
         OUTST = ''

@@ -17,7 +17,7 @@ CONSTANT = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 
 #We get a key encoded in base64. We respond with the base64 concatenated with the Constant UUID and return the SHA1 digest
 def genaccept(REQUEST):
-    return base64.b64encode(hashlib.sha1(REQUEST['Sec-WebSocket-Key'].encode() + CONSTANT).digest()).decode()
+    return base64.b64encode(hashlib.sha1(REQUEST['Sec-WebSocket-Key'] + CONSTANT).digest()).decode()
 
 
 #The Response header for Websocket
