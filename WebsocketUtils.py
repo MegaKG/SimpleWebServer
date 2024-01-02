@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #GNU General Public License v3.0
 #Code by MegaKG
 import hashlib
@@ -160,14 +159,14 @@ class wrappedConnection(tcp.serverCon):
             #Give the 126
             OutputFrame.append( 126 )
             #Now two bytes
-            OutputFrame += struct.pack('!Q',Length)
+            OutputFrame += struct.pack('!H',Length)
         
         #If it is 64 bit
         elif Length < 2**64:
             #Give the 127
             OutputFrame.append( 127 )
             #Now eight bytes
-            OutputFrame += struct.pack('!H',Length)
+            OutputFrame += struct.pack('!Q',Length)
 
         else:
             raise ValueError("Invalid Length for Websocket Frame")
